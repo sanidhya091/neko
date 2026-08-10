@@ -1,0 +1,37 @@
+{
+  "id": "neko",
+  "name": "Neko the Cat",
+  "version": "1.0.0",
+  "author": "Project Neko",
+  "defaultScale": 1.0,
+  "animations": {
+    "idle": {
+      "path": "sprites/neko_idle_final.png",
+      "config": { "frameWidth": 128, "frameHeight": 128, "totalFrames": 4, "fps": 6, "loop": true }
+    },
+    "walk": {
+      "path": "sprites/neko_walk_final.png",
+      "config": { "frameWidth": 128, "frameHeight": 128, "totalFrames": 6, "fps": 8, "loop": true }
+    },
+    "sleep": {
+      "path": "sprites/neko_sleep_final.png",
+      "config": { "frameWidth": 128, "frameHeight": 128, "totalFrames": 4, "fps": 3, "loop": true }
+    },
+    "stretch": {
+      "path": "sprites/neko_stretch_final.png",
+      "config": { "frameWidth": 128, "frameHeight": 128, "totalFrames": 4, "fps": 6, "loop": false }
+    },
+    "look": {
+      "path": "sprites/neko_look_final.png",
+      "config": { "frameWidth": 128, "frameHeight": 128, "totalFrames": 4, "fps": 6, "loop": true }
+    }
+  },
+  "personalityDefaults": {
+    "energy": 100,
+    "hunger": 0,
+    "happiness": 100,
+    "sleepiness": 0,
+    "curiosity": 0.8,
+    "playfulness": 0.7
+  }
+}
