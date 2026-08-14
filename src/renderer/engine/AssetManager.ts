@@ -27,7 +27,6 @@ export interface PetManifest {
 }
 
 export class AssetManager {
-  private static loadedTextures: Map<string, PIXI.Texture> = new Map();
   private static spriteSheets: Map<string, PIXI.Spritesheet> = new Map();
   private static manifests: Map<string, PetManifest> = new Map();
 

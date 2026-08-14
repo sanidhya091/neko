@@ -1,42 +1,83 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  screen,
+} from 'electron';
 import path from 'path';
 
 let mainWindow: BrowserWindow | null = null;
 
 const createWindow = () => {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.workAreaSize;
+  const primaryDisplay =
+    screen.getPrimaryDisplay();
+
+  const { width, height } =
+    primaryDisplay.workAreaSize;
 
   mainWindow = new BrowserWindow({
-    width: width,
-    height: height,
+    width,
+    height,
     x: 0,
     y: 0,
+
     transparent: true,
     frame: false,
+    resizable: false,
+    movable: false,
+
     alwaysOnTop: true,
-    skipTaskbar: false,
-    resizable: true,
+    skipTaskbar: true,
     hasShadow: false,
+
+    backgroundColor: '#00000000',
+
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      backgroundThrottling: false
-    }
+      backgroundThrottling: false,
+    },
   });
 
-  // Make window click-through by default unless hovering over pet/UI
-  mainWindow.setIgnoreMouseEvents(true, { forward: true });
+  /*
+   * Keep Neko above normal windows.
+   */
+  mainWindow.setAlwaysOnTop(
+    true,
+    'floating'
+  );
 
-  mainWindow.setVisibleOnAllWorkspaces(true, { visibleForAllSpaces: true });
-  mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+  /*
+   * IMPORTANT:
+   *
+   * Start interactive so Pixi can receive
+   * mouse events and dragging can work.
+   *
+   * We will make the overlay properly
+   * click-through later.
+   */
+  mainWindow.setIgnoreMouseEvents(true, {
+  forward: true,
+});
 
+  /*
+   * Load renderer.
+   */
   if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-    // Open DevTools for debugging in dev mode
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    mainWindow.loadURL(
+      process.env.VITE_DEV_SERVER_URL
+    );
+
+    mainWindow.webContents.openDevTools({
+      mode: 'detach',
+    });
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(
+      path.join(
+        __dirname,
+        '../dist/index.html'
+      )
+    );
   }
 
   mainWindow.on('closed', () => {
@@ -44,25 +85,55 @@ const createWindow = () => {
   });
 };
 
-// IPC to toggle click-through state
-ipcMain.on('set-ignore-mouse-events', (event, ignore, options) => {
-  if (mainWindow) {
-    mainWindow.setIgnoreMouseEvents(ignore, options);
-  }
-});
+/*
+ * Renderer can control whether the
+ * Electron window receives mouse events.
+ *
+ * ignore = true:
+ *   Mouse passes through the overlay.
+ *
+ * ignore = false:
+ *   Overlay receives mouse events.
+ */
+ipcMain.on(
+  'set-ignore-mouse-events',
+  (
+    _event,
+    ignore: boolean,
+    options?: {
+      forward?: boolean;
+    }
+  ) => {
+    if (!mainWindow) return;
 
+    mainWindow.setIgnoreMouseEvents(
+      ignore,
+      options
+    );
+  }
+);
+
+/*
+ * App lifecycle.
+ */
 app.whenReady().then(() => {
   createWindow();
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (
+      BrowserWindow.getAllWindows()
+        .length === 0
+    ) {
       createWindow();
     }
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
+app.on(
+  'window-all-closed',
+  () => {
+    if (process.platform !== 'darwin') {
+      app.quit();
+    }
   }
-});
+);
