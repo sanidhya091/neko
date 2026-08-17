@@ -24,7 +24,7 @@ const stretchSpriteSheet = new URL(
 const FRAME_WIDTH = 128;
 const FRAME_HEIGHT = 128;
 
-const IDLE_FRAMES = 4;
+const IDLE_FRAMES = 6;
 const WALK_FRAMES = 6;
 const LOOK_FRAMES = 4;
 const STRETCH_FRAMES = 4;
@@ -34,7 +34,7 @@ const WALK_FPS = 8;
 const LOOK_FPS = 6;
 const STRETCH_FPS = 6;
 
-const NEKO_SCALE = 2.5;
+const NEKO_SCALE = 0.65;
 const WALK_SPEED = 90;
 const EDGE_MARGIN = 100;
 
@@ -196,7 +196,7 @@ export default function App() {
         window.innerWidth / 2;
 
       neko.y =
-        window.innerHeight - 100;
+        window.innerHeight - 70;
 
       neko.animationSpeed =
         IDLE_FPS / 60;
@@ -218,23 +218,8 @@ export default function App() {
       let targetX = neko.x;
       let targetY = neko.y;
 
-      // Cursor interaction state.
-      let cursorX = neko.x;
-      let cursorY = neko.y;
-      let cursorNoticeTimer = 5 + Math.random() * 6;
-      let cursorChasing = false;
-      let cursorChaseTimer = 0;
-      let cursorCloseTimer = 0;
-      let cursorPlaying = false;
-      let cursorPlayTimer = 0;
-
       let stateTimer = 0;
       let stateDuration = 1;
-
-      // Sleep state.
-      let idleSince = 0;
-      let sleepState: 'awake' | 'sleeping' = 'awake';
-      let sleepBubbleTimer = 0;
 
       /*
        * Dragging state.
@@ -322,92 +307,14 @@ export default function App() {
         reaction.text = text;
         reaction.visible = true;
         reaction.alpha = 1;
-        reaction.scale.set(0.85);
-
-        const start = performance.now();
-
-        const animateReaction = (now: number) => {
-          if (destroyed || !reaction.visible) return;
-
-          const progress = Math.min(
-            1,
-            (now - start) / 180
-          );
-
-          reaction.scale.set(
-            0.85 + progress * 0.15
-          );
-
-          if (progress < 1) {
-            requestAnimationFrame(animateReaction);
-          }
-        };
-
-        requestAnimationFrame(animateReaction);
-
         window.setTimeout(() => {
-          if (!destroyed) {
-            reaction.visible = false;
-            reaction.scale.set(1);
-          }
-        }, 850);
-      };
-
-      const showPersonalityReaction = (
-        kind: 'happy' | 'playful' | 'annoyed'
-      ) => {
-        if (kind === 'happy') {
-          showReaction(
-            Math.random() < 0.5
-              ? '♥'
-              : 'purr~'
-          );
-          spawnHearts(1);
-        } else if (kind === 'playful') {
-          showReaction(
-            Math.random() < 0.5
-              ? 'hehe~'
-              : 'boop!'
-          );
-          spawnHearts(2);
-
-          const oldRotation = neko.rotation;
-          neko.rotation =
-            facingRight ? 0.08 : -0.08;
-
-          window.setTimeout(() => {
-            if (!destroyed) {
-              neko.rotation = oldRotation;
-            }
-          }, 160);
-        } else {
-          showReaction(
-            Math.random() < 0.5
-              ? 'hmph!'
-              : 'hey!'
-          );
-
-          const oldRotation = neko.rotation;
-          neko.rotation =
-            facingRight ? -0.06 : 0.06;
-
-          window.setTimeout(() => {
-            if (!destroyed) {
-              neko.rotation = oldRotation;
-            }
-          }, 180);
-        }
+          if (!destroyed) reaction.visible = false;
+        }, 800);
       };
 
       const startPetting = () => {
         if (isDragging || petCooldown > 0) return;
-
-        if (sleepState === 'sleeping') {
-          wakeNeko();
-        }
-
         isPetting = true;
-        idleSince = 0;
         petTimer = 0;
         neko.stop();
         state = 'idle';
@@ -415,25 +322,21 @@ export default function App() {
         setAnimation(idleTextures, IDLE_FPS, true);
         petCount++;
 
-        if (petCount % 7 === 0) {
-          showPersonalityReaction('playful');
-        } else if (petCount % 5 === 0) {
-          showReaction('♥♥♥');
-          spawnHearts(2);
-        } else {
-          showPersonalityReaction('happy');
-        }
+        spawnHearts(petCount % 4 === 0 ? 2 : 1);
+
+        showReaction(
+          petCount % 5 === 0
+            ? '♥♥♥'
+            : Math.random() < 0.65
+              ? '♥'
+              : 'purr~'
+        );
       };
 
       const stopPetting = () => {
         if (!isPetting) return;
         isPetting = false;
         petCooldown = 0.25;
-
-        if (petTimer < 0.25) {
-          showPersonalityReaction('annoyed');
-        }
-
         startIdle();
       };
 
@@ -491,13 +394,6 @@ export default function App() {
 
         if (
           inside &&
-          sleepState === 'sleeping'
-        ) {
-          wakeNeko();
-        }
-
-        if (
-          inside &&
           !windowInteractive
         ) {
           windowInteractive = true;
@@ -520,14 +416,6 @@ export default function App() {
       app.stage.on(
         'globalpointermove',
         handleGlobalPointerMove
-      );
-
-      window.addEventListener(
-        'pointermove',
-        (event: PointerEvent) => {
-          cursorX = event.clientX;
-          cursorY = event.clientY;
-        }
       );
 
       const chooseIdleDuration =
@@ -593,36 +481,6 @@ export default function App() {
             true
           );
         };
-
-      const startSleeping = () => {
-        if (destroyed || isDragging || isPetting) return;
-        if (sleepState === 'sleeping') return;
-
-        sleepState = 'sleeping';
-        sleepBubbleTimer = 0;
-        state = 'idle';
-        stateTimer = 0;
-
-        setAnimation(
-          idleTextures,
-          IDLE_FPS,
-          true
-        );
-
-        showReaction('zzz');
-      };
-
-      const wakeNeko = () => {
-        if (sleepState !== 'sleeping') return;
-
-        sleepState = 'awake';
-        idleSince = 0;
-        sleepBubbleTimer = 0;
-
-        startIdle();
-        spawnHearts(1);
-        showReaction('♥');
-      };
 
       const startIdle = () => {
         state = 'idle';
@@ -724,7 +582,6 @@ export default function App() {
         if (destroyed) return;
 
         isDragging = true;
-        idleSince = 0;
         isPetting = false;
         dragDistance = 0;
 
@@ -916,153 +773,9 @@ export default function App() {
       const ticker = (
         delta: number
       ) => {
-        const dt = delta / 60;
-
-        // Staying undisturbed for ~35 seconds makes Neko sleepy.
-        if (
-          !isDragging &&
-          !isPetting &&
-          sleepState === 'awake'
-        ) {
-          idleSince += dt;
-
-          if (idleSince >= 35) {
-            startSleeping();
-            return;
-          }
-        }
-
-        if (sleepState === 'sleeping') {
-          sleepBubbleTimer += dt;
-          neko.stop();
-
-          if (sleepBubbleTimer >= 3.5) {
-            sleepBubbleTimer = 0;
-            showReaction(
-              Math.random() < 0.5
-                ? 'zzz'
-                : '...'
-            );
-          }
-
-          return;
-        }
-
-        /*
-         * CURSOR INTERACTION
-         *
-         * Neko only notices the cursor occasionally.
-         * She does not permanently chase it.
-         */
-        if (
-          !isDragging &&
-          !isPetting &&
-          !cursorChasing
-        ) {
-          cursorNoticeTimer -= dt;
-
-          if (cursorNoticeTimer <= 0) {
-            const dx = cursorX - neko.x;
-            const dy = cursorY - neko.y;
-            const distance = Math.sqrt(
-              dx * dx + dy * dy
-            );
-
-            if (distance < 450) {
-              cursorChasing = true;
-              cursorChaseTimer =
-                1.8 + Math.random() * 2.2;
-              cursorCloseTimer = 0;
-
-              state = 'walking';
-              stateTimer = 0;
-
-              setAnimation(
-                walkTextures,
-                WALK_FPS,
-                true
-              );
-            } else {
-              cursorNoticeTimer =
-                3 + Math.random() * 7;
-            }
-          }
-        }
-
-        if (cursorChasing) {
-          cursorChaseTimer -= dt;
-
-          const dx = cursorX - neko.x;
-          const dy = cursorY - neko.y;
-          const distance = Math.sqrt(
-            dx * dx + dy * dy
-          );
-
-          if (
-            distance > 650 ||
-            cursorChaseTimer <= 0
-          ) {
-            cursorChasing = false;
-            cursorNoticeTimer =
-              4 + Math.random() * 8;
-            startIdle();
-            return;
-          }
-
-          if (distance > 45) {
-            const speed = 1.35 * delta;
-
-            neko.x +=
-              (dx / distance) * speed;
-            neko.y +=
-              (dy / distance) * speed;
-
-            if (Math.abs(dx) > 0.5) {
-              neko.scale.x =
-                dx > 0 ? 2.5 : -2.5;
-            }
-          } else {
-            cursorCloseTimer += dt;
-
-            if (!cursorPlaying && cursorCloseTimer > 0.25) {
-              cursorPlaying = true;
-              cursorPlayTimer = 0;
-
-              // Tiny playful pause: switch to idle and face the cursor.
-              state = 'idle';
-              stateTimer = 0;
-              setAnimation(
-                idleTextures,
-                IDLE_FPS,
-                true
-              );
-
-              if (Math.abs(dx) > 0.5) {
-                neko.scale.x =
-                  dx > 0 ? 2.5 : -2.5;
-              }
-
-              // A couple of hearts makes the interaction feel intentional.
-              spawnHearts(2);
-            }
-
-            if (cursorPlaying) {
-              cursorPlayTimer += dt;
-
-              if (cursorPlayTimer > 0.9) {
-                cursorPlaying = false;
-                cursorChasing = false;
-                cursorNoticeTimer =
-                  5 + Math.random() * 7;
-                startIdle();
-                return;
-              }
-            }
-          }
-
-          return;
-        }
         if (destroyed || isDragging) return;
+
+        const dt = delta / 60;
 
         if (petCooldown > 0) {
           petCooldown = Math.max(0, petCooldown - dt);
